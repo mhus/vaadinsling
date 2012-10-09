@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.mhus.sling.vaadin</groupId>
   <artifactId>VaadinSling</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>bundle</packaging>
   <name>Vaadin Sling Adapter</name>
   <description>Adapter to develop and use Vaadin application inside the Apache-Sling framework</description>
