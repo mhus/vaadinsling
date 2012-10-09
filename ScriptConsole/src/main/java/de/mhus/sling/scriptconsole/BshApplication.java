@@ -1,5 +1,7 @@
 package de.mhus.sling.scriptconsole;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -201,6 +203,11 @@ public class BshApplication extends VaadinApplication {
 			engine.eval("import com.vaadin.ui;");
 			engine.eval("import org.apache.sling.api.resource;");
 			engine.eval("import org.apache.sling.api;");
+			
+			MyWriter myWriter = new MyWriter();
+			engine.getContext().setErrorWriter(myWriter);
+			engine.getContext().setWriter(myWriter);
+			
 		} catch (Throwable t) {
 			log.error("",t);
 		}
@@ -267,7 +274,7 @@ public class BshApplication extends VaadinApplication {
 		text = text + "> " + cmd + "\n";
 		try {
 			Object ret = engine.eval( cmd );
-			text = text + ret + "\n";
+			text = text + "< " + ret + "\n";
 			if (ret != null) window.showNotification(ret.toString());
 		} catch (Throwable e) {
 			window.showNotification(e.toString(),Notification.TYPE_ERROR_MESSAGE );
@@ -337,4 +344,25 @@ public class BshApplication extends VaadinApplication {
 //                null);
 //	}
 	
+	private class MyWriter extends Writer {
+
+		@Override
+		public void close() throws IOException {
+		}
+
+		@Override
+		public void flush() throws IOException {
+		}
+
+		@Override
+		public void write(char[] buf, int off, int size) throws IOException {
+			StringBuffer sb = new StringBuffer();
+			sb.append(output.getValue());
+			for (int i = 0; i < size; i++) {
+				sb.append(buf[off+i]);
+			}
+			output.setValue(sb.toString());
+		}
+		
+	}
 }
