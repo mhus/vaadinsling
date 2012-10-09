@@ -1,5 +1,6 @@
 package de.mhus.sling.scriptconsole;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 
 import javax.script.ScriptContext;
@@ -11,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import bsh.engine.BshScriptEngine;
 
 import com.vaadin.data.Item;
+import com.vaadin.data.Property;
+import com.vaadin.data.Property.ValueChangeEvent;
 import com.vaadin.data.util.IndexedContainer;
 import com.vaadin.event.ShortcutAction;
 import com.vaadin.event.ShortcutAction.KeyCode;
@@ -44,6 +47,7 @@ public class BshApplication extends VaadinApplication {
 	private Table bindings;
 	private BindingsDataSource bindingsDataSource;
 	private CheckBox cbCleanLine;
+	private TextArea bindingInfo;
 	
 	@Override
 	public void doInit() {
@@ -81,7 +85,9 @@ public class BshApplication extends VaadinApplication {
         inputLine.setWidth("100%");
 //		inputLine.setValue("return ");
 
-        Button button = new Button("Execute");
+        HorizontalLayout buttonBar = new HorizontalLayout();
+        
+        Button button = new Button("Execute (Alt+Enter)");
         button.addListener(new ClickListener() {
 			
 			public void buttonClick(ClickEvent event) {
@@ -102,11 +108,50 @@ public class BshApplication extends VaadinApplication {
         cbCleanLine = new CheckBox("Clean Line");
         cbCleanLine.setValue(true);
         
-        mainLayout.addComponent(button);
-        mainLayout.addComponent(cbCleanLine);
+        buttonBar.addComponent(button);
+        buttonBar.addComponent(cbCleanLine);
+
+        
+        button = new Button("Delete Binding");
+        button.addListener(new ClickListener() {
+			
+			public void buttonClick(ClickEvent event) {
+				doDeleteBinding();
+			}
+		});
+        buttonBar.addComponent(button);
+
+        button = new Button("Refresh Binding");
+        button.addListener(new ClickListener() {
+			
+			public void buttonClick(ClickEvent event) {
+				doRefreshBinding();
+			}
+		});
+        buttonBar.addComponent(button);
+        
+        button = new Button("Load Script");
+        button.addListener(new ClickListener() {
+			
+			public void buttonClick(ClickEvent event) {
+				doLoadScript();
+			}
+		});
+        buttonBar.addComponent(button);
+        
+        button = new Button("Save Script");
+        button.addListener(new ClickListener() {
+			
+			public void buttonClick(ClickEvent event) {
+				doSaveScript();
+			}
+		});
+        buttonBar.addComponent(button);
 
 //        output.setValue("");
 //        output.setReadOnly(true);
+        
+        mainLayout.addComponent(buttonBar);
         
         vert.addComponent(inputLine);
 
@@ -121,10 +166,33 @@ public class BshApplication extends VaadinApplication {
         bindings.setContainerDataSource( bindingsDataSource );
         bindings.setColumnReorderingAllowed(true);
         bindings.setColumnCollapsingAllowed(true);
+        bindings.setMultiSelect(false);
+        bindings.setSelectable(true);
+        bindings.setImmediate(true);
+        bindings.addListener(new Property.ValueChangeListener() {
+
+			@Override
+			public void valueChange(ValueChangeEvent event) {
+				doShowBindingInfos();
+			}
+        	
+        });
         
         bindings.setColumnHeaders(new String[] { "Name", "Type", "Value" });
 
-        mainLR.addComponent(bindings);
+        VerticalSplitPanel rightSplit = new VerticalSplitPanel();
+        rightSplit.addComponent(bindings);
+        rightSplit.setHeight("600px");
+        rightSplit.setWidth("100%");
+        rightSplit.setSplitPosition(150, Sizeable.UNITS_PIXELS);
+        
+        bindingInfo = new TextArea();
+        bindingInfo.setWidth("100%");
+        bindingInfo.setHeight("100%");
+
+        rightSplit.addComponent(bindingInfo);
+        
+        mainLR.addComponent(rightSplit);
         
         
 		window.addComponent(mainLayout);
@@ -137,6 +205,60 @@ public class BshApplication extends VaadinApplication {
 			log.error("",t);
 		}
 		
+	}
+
+	protected void doRefreshBinding() {
+		bindingsDataSource.removeAllItems();
+		bindingsDataSource.update();
+	}
+
+	protected void doSaveScript() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	protected void doLoadScript() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	protected void doDeleteBinding() {
+		try {
+			Item item = bindings.getItem(bindings.getValue());
+			String name = (String)item.getItemProperty("Name").getValue();
+//			Object obj = engine.get(name);
+			engine.put(name, null);
+			bindingsDataSource.removeItem(name);
+			bindingInfo.setValue("");
+		} catch (Throwable t) {
+			bindingInfo.setValue(t.toString());
+			t.printStackTrace();
+		}
+	}
+
+	protected void doShowBindingInfos() {
+		bindingInfo.setValue("");
+		try {
+			Item item = bindings.getItem(bindings.getValue());
+			String name = (String)item.getItemProperty("Name").getValue();
+			Object obj = engine.get(name);
+			StringBuffer out = new StringBuffer();
+			for (Method m : obj.getClass().getMethods()) {
+					out.append(m.getReturnType().getSimpleName()).append(" ");
+					out.append(m.getName()).append("(");
+					int nr = 0;
+					for (Class<?> pt : m.getParameterTypes()) {
+						if (nr != 0) out.append(", ");
+						out.append(pt.getSimpleName()).append(" nr" + nr);
+						nr++;
+					}
+					out.append(")\n");
+			}
+			bindingInfo.setValue(out.toString());
+		} catch (Throwable t) {
+			bindingInfo.setValue(t.toString());
+			t.printStackTrace();
+		}
 	}
 
 	protected void doExecute() {
@@ -156,7 +278,7 @@ public class BshApplication extends VaadinApplication {
 		
 		if (((Boolean)cbCleanLine.getValue()).booleanValue()) inputLine.setValue("");
 		
-		bindingsDataSource.update();
+		// bindingsDataSource.update();
 	}
 
 	private class BindingsDataSource extends IndexedContainer {
@@ -199,6 +321,7 @@ public class BshApplication extends VaadinApplication {
 	protected void doSlingResourceChanged() {
 		if (slingRequestInfo == null || engine == null) return;
 		engine.put("resource", slingRequestInfo.getResource());
+		engine.put("resolver", resourceResolver);
 	}
 	
 //	public static final Object iso3166_PROPERTY_NAME = "name";

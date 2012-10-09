@@ -7,12 +7,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.resource.ResourceResolver;
 
 public abstract class VaadinApplication extends Application implements HttpServletRequestListener {
 
 	private static final long serialVersionUID = 1L;
 	protected Window window;
 	protected SlingRequestInfo slingRequestInfo;
+	protected ResourceResolver resourceResolver;
 
 	@Override
 	public void init() {
@@ -31,6 +33,7 @@ public abstract class VaadinApplication extends Application implements HttpServl
 		
 		if (request instanceof SlingHttpServletRequest) {
 			SlingHttpServletRequest slingRequest = (SlingHttpServletRequest)request;
+			resourceResolver = slingRequest.getResourceResolver();
 //			log.debug("Request: " + slingRequest.getRequestPathInfo().getResourcePath());
 			slingRequestInfo = new SlingRequestInfo(slingRequest);
 			doSlingResourceChanged();
