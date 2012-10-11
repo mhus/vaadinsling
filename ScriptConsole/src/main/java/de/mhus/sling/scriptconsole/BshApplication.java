@@ -1,13 +1,20 @@
 package de.mhus.sling.scriptconsole;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import javax.jcr.Node;
+import javax.jcr.Session;
 import javax.script.ScriptContext;
 
 import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.resource.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +24,7 @@ import com.vaadin.data.Item;
 import com.vaadin.data.Property;
 import com.vaadin.data.Property.ValueChangeEvent;
 import com.vaadin.data.util.IndexedContainer;
+import com.vaadin.event.Action;
 import com.vaadin.event.ShortcutAction;
 import com.vaadin.event.ShortcutAction.KeyCode;
 import com.vaadin.event.ShortcutListener;
@@ -50,6 +58,9 @@ public class BshApplication extends VaadinApplication {
 	private BindingsDataSource bindingsDataSource;
 	private CheckBox cbCleanLine;
 	private TextArea bindingInfo;
+	private CheckBox cbCleanOutput;
+	private CheckBox cbBindingsUpdate;
+	private StringBuffer text;
 	
 	@Override
 	public void doInit() {
@@ -74,7 +85,7 @@ public class BshApplication extends VaadinApplication {
 		
         vert.setHeight("600px");
         vert.setWidth("100%");
-        vert.setSplitPosition(150, Sizeable.UNITS_PIXELS);
+        vert.setSplitPosition(400, Sizeable.UNITS_PIXELS);
         
         output = new TextArea();
         output.setHeight("100%");
@@ -106,13 +117,8 @@ public class BshApplication extends VaadinApplication {
 				doExecute();
 			}
 		});
-        
-        cbCleanLine = new CheckBox("Clean Line");
-        cbCleanLine.setValue(true);
-        
+                
         buttonBar.addComponent(button);
-        buttonBar.addComponent(cbCleanLine);
-
         
         button = new Button("Delete Binding");
         button.addListener(new ClickListener() {
@@ -150,10 +156,35 @@ public class BshApplication extends VaadinApplication {
 		});
         buttonBar.addComponent(button);
 
+        button = new Button("Destroy Application");
+        button.addListener(new ClickListener() {
+			
+			public void buttonClick(ClickEvent event) {
+				BshApplication.this.close();
+			}
+		});
+        buttonBar.addComponent(button);
+
 //        output.setValue("");
 //        output.setReadOnly(true);
         
         mainLayout.addComponent(buttonBar);
+        
+        HorizontalLayout configBar = new HorizontalLayout();
+        
+        cbCleanLine = new CheckBox("Clean Line");
+        cbCleanLine.setValue(false);
+        configBar.addComponent(cbCleanLine);
+        
+        cbCleanOutput = new CheckBox("Clean Output");
+        cbCleanOutput.setValue(true);
+        configBar.addComponent(cbCleanOutput);
+
+        cbBindingsUpdate = new CheckBox("Bindings Update");
+        cbBindingsUpdate.setValue(true);
+        configBar.addComponent(cbBindingsUpdate);
+        
+        mainLayout.addComponent(configBar);
         
         vert.addComponent(inputLine);
 
@@ -200,13 +231,15 @@ public class BshApplication extends VaadinApplication {
 		window.addComponent(mainLayout);
 		
 		try {
-			engine.eval("import com.vaadin.ui;");
-			engine.eval("import org.apache.sling.api.resource;");
-			engine.eval("import org.apache.sling.api;");
-			
 			MyWriter myWriter = new MyWriter();
 			engine.getContext().setErrorWriter(myWriter);
 			engine.getContext().setWriter(myWriter);
+			
+			engine.eval("import com.vaadin.ui.*;");
+			engine.eval("import org.apache.sling.api.resource.*;");
+			engine.eval("import org.apache.sling.api.*;");
+			engine.eval("import java.util.*;");
+			engine.eval("import java.io.*;");
 			
 		} catch (Throwable t) {
 			log.error("",t);
@@ -219,14 +252,98 @@ public class BshApplication extends VaadinApplication {
 		bindingsDataSource.update();
 	}
 
+	@SuppressWarnings("serial")
 	protected void doSaveScript() {
-		// TODO Auto-generated method stub
-		
+		try {
+			BrowseDialog.show(getMainWindow(), "Save", true, resourceResolver, new Action.Listener() {
+				
+				@Override
+				public void handleAction(Object sender, Object target) {
+					if (target == null) return;
+					try {
+						Resource res = (Resource)target;
+						BrowseDialog dlg = (BrowseDialog) sender;
+						String il = dlg.getInputLine();
+						System.err.println(il);
+						if (il != null) {
+							
+							if (!il.endsWith(".bsh")) il = il + ".bsh";
+							
+							// create
+							// do not have the cool CRUD in the current release ... use old style
+//							ModifyingResourceProvider mRes = (ModifyingResourceProvider)res;
+							
+							String c = (String) inputLine.getValue();
+							ByteArrayInputStream dataStream = new ByteArrayInputStream(c.getBytes());
+
+							Session jcrSession = res.getResourceResolver().adaptTo(Session.class);
+							Node dir = res.adaptTo(Node.class);
+							
+							Node file = dir.addNode(il, "nt:file");
+							Node content = file.addNode("jcr:content","nt:unstructured");
+							content.setProperty("jcr:data", new org.apache.jackrabbit.value.BinaryImpl( dataStream ));
+							
+							jcrSession.save();
+							
+						} else {
+							// overwrite
+//							OutputStream os = res.adaptTo(OutputStream.class);
+//							String c = (String) inputLine.getValue();
+//							for (int i = 0; i < c.length(); i++)
+//								os.write(c.charAt(i)); // no UTF-8
+//							os.close();
+
+							String c = (String) inputLine.getValue();
+							ByteArrayInputStream dataStream = new ByteArrayInputStream(c.getBytes());
+							
+							Session jcrSession = res.getResourceResolver().adaptTo(Session.class);
+							Node file = res.adaptTo(Node.class);
+							Node content = file.getNode("jcr:content");
+							content.setProperty("jcr:data", new org.apache.jackrabbit.value.BinaryImpl( dataStream ));
+							
+							jcrSession.save();
+							
+						}
+					} catch (Exception e) {
+						log.error("save fails",e);
+						throw new RuntimeException("Save",e);
+					}
+				}
+			});
+		} catch (Exception e) {
+			log.error("save no dialog",e);
+			window.showNotification(e.toString(),Notification.TYPE_ERROR_MESSAGE );
+		}
 	}
 
 	protected void doLoadScript() {
-		// TODO Auto-generated method stub
-		
+		try {
+			BrowseDialog.show(getMainWindow(), "Open", false, resourceResolver, new Action.Listener() {
+				
+				@Override
+				public void handleAction(Object sender, Object target) {
+					if (target == null) return;
+					Resource res = (Resource)target;
+					InputStream reader = res.adaptTo(InputStream.class);
+					int rc = 0;
+					StringBuffer sb = new StringBuffer();
+					try {
+						while ((rc=reader.read()) >= 0) {
+							sb.append((char)rc); // no UTF-8 !!!
+						}
+						reader.close();
+					} catch (IOException e) {
+						log.error("",e);
+						window.showNotification(e.toString(),Notification.TYPE_ERROR_MESSAGE );
+					}
+					
+					inputLine.setValue(sb.toString());
+				}
+			});
+		} catch (Exception e) {
+			log.error("",e);
+			window.showNotification(e.toString(),Notification.TYPE_ERROR_MESSAGE );
+		}
 	}
 
 	protected void doDeleteBinding() {
@@ -239,7 +356,7 @@ public class BshApplication extends VaadinApplication {
 			bindingInfo.setValue("");
 		} catch (Throwable t) {
 			bindingInfo.setValue(t.toString());
-			t.printStackTrace();
+			log.error("",t);
 		}
 	}
 
@@ -264,28 +381,31 @@ public class BshApplication extends VaadinApplication {
 			bindingInfo.setValue(out.toString());
 		} catch (Throwable t) {
 			bindingInfo.setValue(t.toString());
-			t.printStackTrace();
+			log.error("",t);
 		}
 	}
 
 	protected void doExecute() {
-		String text = (String)output.getValue();
+		if (((Boolean)cbCleanOutput.getValue()).booleanValue()) output.setValue("");
 		String cmd = (String)inputLine.getValue();
-		text = text + "> " + cmd + "\n";
+		text = new StringBuffer();
+		text.append( (String)output.getValue() );
+		text.append( "> " + cmd + "\n");
 		try {
 			Object ret = engine.eval( cmd );
-			text = text + "< " + ret + "\n";
+			text.append( "< " + ret + "\n" );
 			if (ret != null) window.showNotification(ret.toString());
 		} catch (Throwable e) {
+			log.error("",e);
 			window.showNotification(e.toString(),Notification.TYPE_ERROR_MESSAGE );
-			text = text + e.toString() + "\n";
+			text.append(e.toString() + "\n");
 		}
 		
-		output.setValue( text );
-		
+		output.setValue( text.toString() );
+		text = null;
 		if (((Boolean)cbCleanLine.getValue()).booleanValue()) inputLine.setValue("");
 		
-		// bindingsDataSource.update();
+		if (((Boolean)cbBindingsUpdate.getValue()).booleanValue()) doRefreshBinding();
 	}
 
 	private class BindingsDataSource extends IndexedContainer {
@@ -356,12 +476,12 @@ public class BshApplication extends VaadinApplication {
 
 		@Override
 		public void write(char[] buf, int off, int size) throws IOException {
-			StringBuffer sb = new StringBuffer();
+			StringBuffer sb = text == null ? new StringBuffer() : text;
 			sb.append(output.getValue());
 			for (int i = 0; i < size; i++) {
 				sb.append(buf[off+i]);
 			}
-			output.setValue(sb.toString());
+			if (text == null) output.setValue(sb.toString());
 		}
 		
 	}
