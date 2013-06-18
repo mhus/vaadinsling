@@ -14,10 +14,12 @@ public abstract class VaadinApplication extends Application implements HttpServl
 	private static final long serialVersionUID = 1L;
 	protected Window window;
 	protected SlingRequestInfo slingRequestInfo;
-	protected ResourceResolver resourceResolver;
-
+	protected ResourceResolver currentResourceResolver;
+	protected VaadinServlet<?> servlet;
+	
 	@Override
 	public void init() {
+		
 		
 		window = new Window();
 		setMainWindow(window);
@@ -33,7 +35,7 @@ public abstract class VaadinApplication extends Application implements HttpServl
 		
 		if (request instanceof SlingHttpServletRequest) {
 			SlingHttpServletRequest slingRequest = (SlingHttpServletRequest)request;
-			resourceResolver = slingRequest.getResourceResolver();
+			currentResourceResolver = slingRequest.getResourceResolver();
 //			log.debug("Request: " + slingRequest.getRequestPathInfo().getResourcePath());
 			slingRequestInfo = new SlingRequestInfo(slingRequest);
 			doSlingResourceChanged();

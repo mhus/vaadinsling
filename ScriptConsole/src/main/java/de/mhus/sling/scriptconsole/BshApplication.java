@@ -255,7 +255,7 @@ public class BshApplication extends VaadinApplication {
 	@SuppressWarnings("serial")
 	protected void doSaveScript() {
 		try {
-			BrowseDialog.show(getMainWindow(), "Save", true, resourceResolver, new Action.Listener() {
+			BrowseDialog.show(getMainWindow(), "Save", true, currentResourceResolver, new Action.Listener() {
 				
 				@Override
 				public void handleAction(Object sender, Object target) {
@@ -318,7 +318,7 @@ public class BshApplication extends VaadinApplication {
 
 	protected void doLoadScript() {
 		try {
-			BrowseDialog.show(getMainWindow(), "Open", false, resourceResolver, new Action.Listener() {
+			BrowseDialog.show(getMainWindow(), "Open", false, currentResourceResolver, new Action.Listener() {
 				
 				@Override
 				public void handleAction(Object sender, Object target) {
@@ -448,7 +448,8 @@ public class BshApplication extends VaadinApplication {
 	protected void doSlingResourceChanged() {
 		if (slingRequestInfo == null || engine == null) return;
 		engine.put("resource", slingRequestInfo.getResource());
-		engine.put("resolver", resourceResolver);
+		engine.put("resolver", currentResourceResolver);
+		engine.put("resolverFactory", servlet.getResourceResolverFactory());
 	}
 	
 //	public static final Object iso3166_PROPERTY_NAME = "name";

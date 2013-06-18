@@ -12,6 +12,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.sling.api.resource.ResourceResolverFactory;
+
 public class CoreFilter extends CoreServlet implements Filter {
 
 	private static final long serialVersionUID = 1L;
@@ -33,5 +35,9 @@ public class CoreFilter extends CoreServlet implements Filter {
 			myContext = new ContextWrapper(super.getServletContext());
         return myContext;
     }
+	
+	protected void setResourceResolverFactory(ResourceResolverFactory factory) {
+		this.resourceResolverFactory = factory;
+	}
 
 }

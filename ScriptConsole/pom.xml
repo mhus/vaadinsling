@@ -101,12 +101,14 @@
           <executions>
             <!-- Specify that the maven validate task automatically incorporates the use of the maven-sling-plugin to validate 
               the JSON files contained in a bundle. Validation can be skipped by setting system property 'sling.validation.skip' to true. -->
+              <!-- 
             <execution>
               <id>validate-bundle</id>
               <goals>
                 <goal>validate</goal>
               </goals>
             </execution>
+               -->
             <!-- Specify that the maven install task automatically incorporates the use of the maven-sling-plugin to deploy 
               resulting bundles directly to a running Sling-instance Install to sling instance can be skipped by setting system property 
               'sling.install.skip' to true. -->
@@ -139,12 +141,14 @@
           <executions>
             <!-- The scr goal is bound to the generate-resources phase and will generate a single descriptor file as well 
               as meta type file for all components found in the project. -->
+              <!-- 
             <execution>
               <id>generate-scr-scrdescriptor</id>
               <goals>
                 <goal>scr</goal>
               </goals>
             </execution>
+               -->
           </executions>
         </plugin>
 
@@ -258,9 +262,7 @@
     <dependency>
     	<groupId>de.mhus.sling.vaadin</groupId>
     	<artifactId>VaadinSling</artifactId>
-    	<version>0.0.1-SNAPSHOT</version>
-    	<type>jar</type>
-    	<scope>compile</scope>
+    	<version>1.0.2-SNAPSHOT</version>
     </dependency>
     <dependency>
     	<groupId>org.apache.felix</groupId>

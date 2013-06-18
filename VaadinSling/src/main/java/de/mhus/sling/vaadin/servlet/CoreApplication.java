@@ -12,7 +12,6 @@ import de.mhus.sling.vaadin.SlingInitialize;
 import de.mhus.sling.vaadin.VaadinApplication;
 import de.mhus.sling.vaadin.VaadinServlet;
 
-
 public class CoreApplication extends VaadinApplication implements SlingInitialize {
 
 	/**
@@ -31,6 +30,11 @@ public class CoreApplication extends VaadinApplication implements SlingInitializ
 		vertical.addComponent(l);
 
 		l = new Label( "Vaadin Path: " + (vaadinRoot == null ? "?" : vaadinRoot.getAbsolutePath() ) );
+		vertical.addComponent(l);
+		
+		// TODO add list of resources
+		
+		l = new Label("Resource Resolver Factory: " + servlet.getResourceResolverFactory() );
 		vertical.addComponent(l);
 		
 		window.addComponent(vertical);
@@ -56,7 +60,7 @@ public class CoreApplication extends VaadinApplication implements SlingInitializ
 
 	@Override
 	public void slingInitialize(VaadinServlet<?> servlet) {
-		vaadinRoot = ((CoreServlet)servlet).getVaadinRoot();
+		vaadinRoot = ((CoreServlet)servlet).getCoreContext().getVaadinRoot();
 	}
 
 }

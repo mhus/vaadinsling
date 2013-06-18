@@ -2,6 +2,7 @@ package de.mhus.sling.vaadin.servlet;
 
 import java.io.File;
 
+import de.mhus.sling.vaadin.VaadinResource;
 import de.mhus.sling.vaadin.VaadinServlet;
 
 public class CoreServlet extends VaadinServlet<CoreApplication> {
@@ -12,8 +13,9 @@ public class CoreServlet extends VaadinServlet<CoreApplication> {
 
 	private static final long serialVersionUID = 1L;
     	
-	public File getVaadinRoot() {
-		return ((ContextWrapper)getServletContext()).getVaadinRoot();
+	public ContextWrapper getCoreContext() {
+		return (ContextWrapper)getServletContext();
 	}
+	
 	
 }

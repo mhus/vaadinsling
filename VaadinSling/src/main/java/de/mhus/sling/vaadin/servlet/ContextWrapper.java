@@ -5,6 +5,9 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.servlet.RequestDispatcher;
@@ -12,10 +15,14 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
+import de.mhus.sling.vaadin.VaadinResource;
+
 public class ContextWrapper implements ServletContext {
 
+	private static final String PREFIX = "/VAADIN/";
 	private ServletContext org;
 	private File root = null;
+	private HashMap<String, VaadinResource> resources = new HashMap<String, VaadinResource>();
 	
 	public ContextWrapper(ServletContext servletContext) {
 		
@@ -54,9 +61,27 @@ public class ContextWrapper implements ServletContext {
 	@SuppressWarnings("deprecation")
 	public URL getResource(String path) throws MalformedURLException {
 		// look for static VAADIN resources
-		if (path.startsWith("/VAADIN/widgetsets/com.vaadin.terminal.gwt.DefaultWidgetSet")) {
-			// switch to local resource
-			return new File(root,path).toURL();
+		if (path.startsWith(PREFIX)) {
+			int pos = path.indexOf('/', 8);
+			if (pos > 0) {
+				pos = path.indexOf('/',pos+1);
+			}
+			if (pos > 0) {
+				String prefix = path.substring(0,pos);
+				VaadinResource resource = null;
+				synchronized (resources) {
+					resource = resources.get(prefix);
+				}
+				if (resource != null) {
+					return resource.getResource(path);
+				}
+			}
+			// TODO trace a log
+			// fallback
+			if (path.startsWith("/VAADIN/widgetsets/com.vaadin.terminal.gwt.DefaultWidgetSet")) {
+				// switch to local resource
+				return new File(root,path).toURL();
+			}
 		}
 		
 		return org.getResource(path);
@@ -138,6 +163,33 @@ public class ContextWrapper implements ServletContext {
 
 	public String getServletContextName() {
 		return org.getServletContextName();
+	}
+
+	/**
+	 * Remove the resource key and all resource instances from the registry.
+	 * 
+	 * @param resource
+	 */
+	public void unregister(VaadinResource resource) {
+		synchronized (resources) {
+			for (Object obj : resources.entrySet().toArray()) {
+				@SuppressWarnings("unchecked")
+				Entry<String, VaadinResource> set = (Map.Entry<String, VaadinResource>)obj;
+				if (set.getValue() == resource)
+					resources.remove(set.getKey());
+			}
+			for (String path : resource.getVaadinResourcePathes() ) {
+				resources.remove(PREFIX + path);
+			}
+		}
+	}
+
+	public void register(VaadinResource resource) {
+		synchronized (resources) {
+			for (String path : resource.getVaadinResourcePathes() ) {
+				resources.put(PREFIX + path, resource);
+			}
+		}
 	}
 
 }
